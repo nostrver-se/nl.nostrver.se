@@ -11,9 +11,11 @@ import (
 	"github.com/fiatjaf/khatru"
 	"github.com/fiatjaf/khatru/policies"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip11"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/rs/zerolog"
+	"github.com/sebest/xff"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -46,26 +48,29 @@ func main() {
 		return
 	}
 
-	// load db
-	db.Path = s.DatabasePath
-	if err := db.Init(); err != nil {
-		log.Fatal().Err(err).Msg("failed to initialize database")
-		return
-	}
-	defer db.Close()
-	log.Debug().Str("path", db.Path).Msg("initialized database")
-
 	// init relay
 	relay.Info.Name = "countries"
 	relay.Info.Description = "serves notes according to your nationality"
 	relay.Info.Contact = s.RelayContact
 	relay.Info.Icon = s.RelayIcon
-	relay.Info.Limitation = &nip11.RelayLimitationDocument{
-		RestrictedWrites: true,
-	}
+	relay.Info.Limitation = &nip11.RelayLimitationDocument{}
 
-	relay.StoreEvent = append(relay.StoreEvent, db.SaveEvent)
-	relay.QueryEvents = append(relay.QueryEvents, db.QueryEvents)
+	relay.StoreEvent = append(relay.StoreEvent,
+		func(ctx context.Context, event *nostr.Event) error {
+			conn := khatru.GetConnection()
+			country := getCountryCode(conn.Request)
+			db := getDatabaseForCountry(country)
+			return db.SaveEvent()
+		},
+	)
+	relay.QueryEvents = append(relay.QueryEvents,
+		func(ctx context.Context, filter nostr.Filter) (chan *nostr.Event, error) {
+			conn := khatru.GetConnection()
+			country := getCountryCode(conn.Request)
+			db := getDatabaseForCountry(country)
+			return db.QueryEvents()
+		},
+	)
 	relay.DeleteEvent = append(relay.DeleteEvent, db.DeleteEvent)
 	relay.RejectEvent = append(relay.RejectEvent,
 		policies.PreventLargeTags(100),
@@ -79,7 +84,8 @@ func main() {
 
 	log.Info().Msg("running on http://0.0.0.0:" + s.Port)
 
-	server := &http.Server{Addr: ":" + s.Port, Handler: relay}
+	xffmw, _ := xff.Default()
+	server := &http.Server{Addr: ":" + s.Port, Handler: xffmw.Handler(relay)}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	g, ctx := errgroup.WithContext(ctx)
