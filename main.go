@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/fiatjaf/eventstore/lmdb"
 	"github.com/fiatjaf/khatru"
 	"github.com/fiatjaf/khatru/policies"
 	"github.com/kelseyhightower/envconfig"
@@ -50,6 +51,8 @@ func main() {
 		return
 	}
 
+	db := lmdb.LMDBBackend{Path: Settings{}.DatabasePath}
+
 	// init relay, see https://github.com/nostr-protocol/nips/blob/master/11.md
 	relay.Info.Name = "countries"
 	relay.Info.Description = "serves notes according to your nationality"
@@ -66,6 +69,7 @@ func main() {
 			return db.SaveEvent(ctx, event)
 		},
 	)
+
 	relay.QueryEvents = append(relay.QueryEvents,
 		func(ctx context.Context, filter nostr.Filter) (chan *nostr.Event, error) {
 			conn := khatru.GetConnection(ctx)
@@ -75,12 +79,15 @@ func main() {
 			return db.QueryEvents(ctx, filter)
 		},
 	)
+
 	relay.DeleteEvent = append(relay.DeleteEvent, db.DeleteEvent)
+
 	relay.RejectEvent = append(relay.RejectEvent,
 		policies.PreventLargeTags(100),
 		policies.PreventTooManyIndexableTags(8, []int{3, 10002}, nil),
 		policies.PreventTooManyIndexableTags(1000, nil, []int{3, 10002}),
 	)
+
 	relay.RejectFilter = append(relay.RejectFilter, policies.NoSearchQueries)
 
 	// http routes
@@ -90,14 +97,17 @@ func main() {
 
 	xffmw, _ := xff.Default()
 	server := &http.Server{Addr: ":" + s.Port, Handler: xffmw.Handler(relay)}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(server.ListenAndServe)
 	g.Go(func() error {
 		<-ctx.Done()
 		return server.Shutdown(context.Background())
 	})
+
 	if err := g.Wait(); err != nil {
 		log.Debug().Err(err).Msg("exit reason")
 	}
