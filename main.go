@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/fiatjaf/eventstore/lmdb"
@@ -37,6 +39,10 @@ type Settings struct {
 	RelayContact string `envconfig:"RELAY_CONTACT" required:"false"`
 	RelayIcon    string `envconfig:"RELAY_ICON" required:"false"`
 }
+
+// List of blocked countries in ISO 3166-1 alpha-2 format separated by comma.
+// Example: BR,AU
+const blockedCountries = ""
 
 func main() {
 	mm, _ = maxminddb.FromBytes(maxmindData)
@@ -86,6 +92,15 @@ func main() {
 		policies.PreventLargeTags(100),
 		policies.PreventTooManyIndexableTags(8, []int{3, 10002}, nil),
 		policies.PreventTooManyIndexableTags(1000, nil, []int{3, 10002}),
+		func(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
+			conn := khatru.GetConnection(ctx)
+			country := getCountryCode(conn.Request)
+			if country != "" && strings.Contains(blockedCountries, country) == true {
+				return true, fmt.Sprintf("The country %s is blocked.", country)
+			}
+
+			return false, ""
+		},
 	)
 
 	relay.RejectFilter = append(relay.RejectFilter, policies.NoSearchQueries)
