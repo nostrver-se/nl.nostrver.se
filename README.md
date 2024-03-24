@@ -1,5 +1,5 @@
 ## Running from the command line
 
-```sh
-$ export BASE_DOMAIN= && go build && ./countries
+```bash
+export BASE_DOMAIN= && go build && ./countries
 ```
