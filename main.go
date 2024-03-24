@@ -33,6 +33,8 @@ type Settings struct {
 	Port         string `envconfig:"PORT" default:"40404"`
 	BaseDomain   string `envconfig:"BASE_DOMAIN" required:"true"`
 	DatabasePath string `envconfig:"DATABASE_PATH" default:"./db"`
+	RelayContact string `envconfig:"RELAY_CONTACT" required:"false"`
+	RelayIcon    string `envconfig:"RELAY_ICON" required:"false"`
 }
 
 func main() {
