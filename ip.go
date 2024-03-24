@@ -36,6 +36,7 @@ func getCountryCode(r *http.Request) string {
 	}
 
 	if err := mm.Lookup(ip, &record); err != nil {
+		log.Print(err)
 		return ""
 	}
 
