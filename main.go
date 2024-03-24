@@ -59,18 +59,20 @@ func main() {
 
 	relay.StoreEvent = append(relay.StoreEvent,
 		func(ctx context.Context, event *nostr.Event) error {
-			conn := khatru.GetConnection()
+			conn := khatru.GetConnection(ctx)
 			country := getCountryCode(conn.Request)
 			db := getDatabaseForCountry(country)
-			return db.SaveEvent()
+
+			return db.SaveEvent(ctx, event)
 		},
 	)
 	relay.QueryEvents = append(relay.QueryEvents,
 		func(ctx context.Context, filter nostr.Filter) (chan *nostr.Event, error) {
-			conn := khatru.GetConnection()
+			conn := khatru.GetConnection(ctx)
 			country := getCountryCode(conn.Request)
 			db := getDatabaseForCountry(country)
-			return db.QueryEvents()
+
+			return db.QueryEvents(ctx, filter)
 		},
 	)
 	relay.DeleteEvent = append(relay.DeleteEvent, db.DeleteEvent)
