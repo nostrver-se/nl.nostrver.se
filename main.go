@@ -3,18 +3,14 @@ package main
 import (
 	"context"
 	_ "embed"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
-	"github.com/fiatjaf/eventstore/lmdb"
 	"github.com/fiatjaf/khatru"
 	"github.com/fiatjaf/khatru/policies"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip11"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/rs/zerolog"
@@ -57,8 +53,6 @@ func main() {
 		return
 	}
 
-	db := lmdb.LMDBBackend{Path: Settings{}.DatabasePath}
-
 	// init relay, see https://github.com/nostr-protocol/nips/blob/master/11.md
 	relay.Info.Name = "countries"
 	relay.Info.Description = "serves notes according to your nationality"
@@ -66,44 +60,23 @@ func main() {
 	relay.Info.Icon = s.RelayIcon
 	relay.Info.Limitation = &nip11.RelayLimitationDocument{}
 
-	relay.StoreEvent = append(relay.StoreEvent,
-		func(ctx context.Context, event *nostr.Event) error {
-			conn := khatru.GetConnection(ctx)
-			country := getCountryCode(conn.Request)
-			db := getDatabaseForCountry(country)
+	relay.StoreEvent = append(relay.StoreEvent, storeEventForCountryDB)
 
-			return db.SaveEvent(ctx, event)
-		},
-	)
+	relay.QueryEvents = append(relay.QueryEvents, queryEventForCountryDB)
 
-	relay.QueryEvents = append(relay.QueryEvents,
-		func(ctx context.Context, filter nostr.Filter) (chan *nostr.Event, error) {
-			conn := khatru.GetConnection(ctx)
-			country := getCountryCode(conn.Request)
-			db := getDatabaseForCountry(country)
-
-			return db.QueryEvents(ctx, filter)
-		},
-	)
-
-	relay.DeleteEvent = append(relay.DeleteEvent, db.DeleteEvent)
+	relay.DeleteEvent = append(relay.DeleteEvent, deleteEventForCountryDB)
 
 	relay.RejectEvent = append(relay.RejectEvent,
 		policies.PreventLargeTags(100),
 		policies.PreventTooManyIndexableTags(8, []int{3, 10002}, nil),
 		policies.PreventTooManyIndexableTags(1000, nil, []int{3, 10002}),
-		func(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
-			conn := khatru.GetConnection(ctx)
-			country := getCountryCode(conn.Request)
-			if country != "" && strings.Contains(blockedCountries, country) == true {
-				return true, fmt.Sprintf("The country %s is blocked.", country)
-			}
-
-			return false, ""
-		},
+		rejectEventForCountryDB,
 	)
 
-	relay.RejectFilter = append(relay.RejectFilter, policies.NoSearchQueries)
+	relay.RejectFilter = append(relay.RejectFilter,
+		policies.NoSearchQueries,
+		rejectFilterForCountryDB,
+	)
 
 	// http routes
 	relay.Router().HandleFunc("/", homePage)

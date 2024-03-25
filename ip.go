@@ -26,6 +26,8 @@ func getDatabaseForCountry(countryCode string) *lmdb.LMDBBackend {
 	return db
 }
 
+// Gets the country code in ISO 3166-1 alpha-2 format.
+// On error returns an empty string.
 func getCountryCode(r *http.Request) string {
 	ip := net.ParseIP(r.RemoteAddr)
 
