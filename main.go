@@ -74,6 +74,9 @@ func main() {
 	// ratelimiter
 	go bucketFillingRoutine()
 
+	// delete old stuff every now and then
+	go deleteOldStuffRoutine()
+
 	relay.Info.Name = "countries"
 	relay.Info.Description = "serves notes according to your country"
 	relay.Info.Contact = s.RelayContact
