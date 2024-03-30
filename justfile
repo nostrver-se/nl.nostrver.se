@@ -5,6 +5,6 @@ build:
     CC=musl-gcc go build -ldflags='-linkmode external -extldflags "-static"' -o ./countries
 
 deploy: build
-    ssh root@turgot 'systemctl stop countries';
-    scp countries turgot:countries/countries
-    ssh root@turgot 'systemctl start countries'
+    ssh root@cantillon 'systemctl stop countries';
+    scp countries cantillon:countries/countries
+    ssh root@cantillon 'systemctl start countries'

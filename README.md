@@ -5,7 +5,7 @@ For example, if your IP address is from Portugal then you will only receive even
 
 ## Running from the command line
 ```bash
-export BASE_DOMAIN= && go build && ./countries
+go build && ./countries
 ```
 
 ## Test this application

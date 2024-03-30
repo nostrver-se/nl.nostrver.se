@@ -32,7 +32,6 @@ var (
 
 type Settings struct {
 	Port         string `envconfig:"PORT" default:"40404"`
-	BaseDomain   string `envconfig:"BASE_DOMAIN" required:"true"`
 	DatabaseDir  string `envconfig:"DATABASE_DIR" default:"./db"`
 	RelayContact string `envconfig:"RELAY_CONTACT" required:"false"`
 	RelayIcon    string `envconfig:"RELAY_ICON" required:"false"`
