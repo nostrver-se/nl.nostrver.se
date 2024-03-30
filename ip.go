@@ -31,6 +31,7 @@ func storeEventForCountryDB(ctx context.Context, event *nostr.Event) error {
 func trackEventOnGlobalDB(ctx context.Context, event *nostr.Event) error {
 	conn := khatru.GetConnection(ctx)
 	country := getCountryCode(conn.Request)
+
 	return globalDB.Update(func(txn *bolt.Tx) error {
 		bucket := txn.Bucket(idMapBucket)
 		id, _ := hex.DecodeString(event.ID)

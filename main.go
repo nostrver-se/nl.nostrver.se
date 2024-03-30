@@ -83,6 +83,7 @@ func main() {
 	relay.StoreEvent = append(relay.StoreEvent,
 		storeEventForCountryDB,
 		trackEventOnGlobalDB,
+		memoryTrack,
 	)
 	relay.QueryEvents = append(relay.QueryEvents, queryEventForCountryDB)
 	relay.DeleteEvent = append(relay.DeleteEvent, deleteEventForCountryDB)
@@ -94,7 +95,6 @@ func main() {
 		rejectIfAlreadyHaveInAnyOtherDB,
 		rateLimit,
 	)
-
 	relay.RejectFilter = append(relay.RejectFilter,
 		policies.NoSearchQueries,
 	)
