@@ -8,13 +8,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/boltdb/bolt"
 	"github.com/fiatjaf/khatru"
 	"github.com/fiatjaf/khatru/policies"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/nbd-wtf/go-nostr/nip11"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/rs/zerolog"
+	bolt "go.etcd.io/bbolt"
 	"golang.org/x/sync/errgroup"
 )
 

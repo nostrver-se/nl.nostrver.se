@@ -3,7 +3,6 @@ module fiatjaf.com/countries
 go 1.21.6
 
 require (
-	github.com/boltdb/bolt v1.3.1
 	github.com/fiatjaf/eventstore v0.3.12
 	github.com/fiatjaf/khatru v0.3.2
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -11,10 +10,12 @@ require (
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/puzpuzpuz/xsync/v3 v3.0.2
 	github.com/rs/zerolog v1.32.0
+	go.etcd.io/bbolt v1.3.9
 	golang.org/x/sync v0.6.0
 )
 
 require (
+	github.com/PowerDNS/lmdb-go v1.9.2 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.2 // indirect

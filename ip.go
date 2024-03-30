@@ -9,15 +9,15 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/boltdb/bolt"
-	es_bolt "github.com/fiatjaf/eventstore/bolt"
+	"github.com/fiatjaf/eventstore/lmdb"
 	"github.com/fiatjaf/khatru"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/puzpuzpuz/xsync/v3"
+	bolt "go.etcd.io/bbolt"
 )
 
 var (
-	dbs         = xsync.NewMapOf[string, *es_bolt.BoltBackend]()
+	dbs         = xsync.NewMapOf[string, *lmdb.LMDBBackend]()
 	idMapBucket = []byte("idMap")
 )
 
@@ -91,9 +91,9 @@ func deleteEventForCountryDB(ctx context.Context, event *nostr.Event) error {
 	return db.DeleteEvent(ctx, event)
 }
 
-func getDatabaseForCountry(countryCode string) *es_bolt.BoltBackend {
-	db, _ := dbs.LoadOrCompute(countryCode, func() *es_bolt.BoltBackend {
-		db := &es_bolt.BoltBackend{
+func getDatabaseForCountry(countryCode string) *lmdb.LMDBBackend {
+	db, _ := dbs.LoadOrCompute(countryCode, func() *lmdb.LMDBBackend {
+		db := &lmdb.LMDBBackend{
 			MaxLimit: 500,
 			Path:     s.DatabaseDir + "/" + countryCode,
 		}
