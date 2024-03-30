@@ -54,9 +54,8 @@ func main() {
 		return
 	}
 
-	os.MkdirAll(s.DatabaseDir, 0755)
-
 	// open global boltdb
+	os.MkdirAll(s.DatabaseDir, 0755)
 	globalDB, err = bolt.Open(s.DatabaseDir+"/global", 0644, nil)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to open global db")
@@ -69,6 +68,9 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to open idMap bucket on global db")
 		return
 	}
+
+	// start cloudflare thing
+	go updateCloudflareRangesRoutine()
 
 	relay.Info.Name = "countries"
 	relay.Info.Description = "serves notes according to your country"
@@ -83,17 +85,15 @@ func main() {
 	relay.QueryEvents = append(relay.QueryEvents, queryEventForCountryDB)
 	relay.DeleteEvent = append(relay.DeleteEvent, deleteEventForCountryDB)
 	relay.RejectEvent = append(relay.RejectEvent,
-		policies.PreventLargeTags(100),
-		policies.PreventTooManyIndexableTags(8, []int{3, 10002}, nil),
-		policies.PreventTooManyIndexableTags(1000, nil, []int{3, 10002}),
 		policies.RestrictToSpecifiedKinds(1),
-		rejectEventForCountryDB,
+		rejectEventForCountry,
+		rejectCloudflareEvents,
+		policies.PreventLargeTags(12),
 		rejectIfAlreadyHaveInAnyOtherDB,
 	)
 
 	relay.RejectFilter = append(relay.RejectFilter,
 		policies.NoSearchQueries,
-		rejectFilterForCountryDB,
 	)
 
 	// http routes

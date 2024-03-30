@@ -34,7 +34,7 @@ func trackEventOnGlobalDB(ctx context.Context, event *nostr.Event) error {
 	})
 }
 
-func rejectEventForCountryDB(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
+func rejectEventForCountry(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
 	conn := khatru.GetConnection(ctx)
 	country := getCountryCode(conn.Request)
 	if country != "" && slices.Contains(s.BlockedCountries, country) == true {
@@ -72,16 +72,6 @@ func queryEventForCountryDB(ctx context.Context, filter nostr.Filter) (chan *nos
 	db := getDatabaseForCountry(country)
 
 	return db.QueryEvents(ctx, filter)
-}
-
-func rejectFilterForCountryDB(ctx context.Context, filter nostr.Filter) (reject bool, msg string) {
-	conn := khatru.GetConnection(ctx)
-	country := getCountryCode(conn.Request)
-	if country == "" {
-		return true, "We can't determine your country."
-	}
-
-	return false, ""
 }
 
 func deleteEventForCountryDB(ctx context.Context, event *nostr.Event) error {
