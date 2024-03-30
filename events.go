@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"strings"
+	"slices"
 
 	"github.com/boltdb/bolt"
 	"github.com/fiatjaf/khatru"
@@ -37,7 +37,7 @@ func trackEventOnGlobalDB(ctx context.Context, event *nostr.Event) error {
 func rejectEventForCountryDB(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
 	conn := khatru.GetConnection(ctx)
 	country := getCountryCode(conn.Request)
-	if country != "" && strings.Contains(blockedCountries, country) == true {
+	if country != "" && slices.Contains(s.BlockedCountries, country) == true {
 		return true, fmt.Sprintf("The country %s is blocked.", country)
 	}
 

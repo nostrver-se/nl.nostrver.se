@@ -35,11 +35,9 @@ type Settings struct {
 	DatabaseDir  string `envconfig:"DATABASE_DIR" default:"./db"`
 	RelayContact string `envconfig:"RELAY_CONTACT" required:"false"`
 	RelayIcon    string `envconfig:"RELAY_ICON" required:"false"`
-}
 
-// List of blocked countries in ISO 3166-1 alpha-2 format separated by comma.
-// Example: BR,AU
-const blockedCountries = ""
+	BlockedCountries []string `envconfig:"BLOCKED_COUNTRIES"`
+}
 
 func main() {
 	// load environment variables
