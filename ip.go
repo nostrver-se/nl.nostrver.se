@@ -3,18 +3,19 @@ package main
 import (
 	"net"
 	"net/http"
+	"strings"
 
-	"github.com/fiatjaf/eventstore/lmdb"
+	"github.com/fiatjaf/eventstore/bolt"
 	"github.com/puzpuzpuz/xsync/v3"
 )
 
-var dbs = xsync.NewMapOf[string, *lmdb.LMDBBackend]()
+var dbs = xsync.NewMapOf[string, *bolt.BoltBackend]()
 
-func getDatabaseForCountry(countryCode string) *lmdb.LMDBBackend {
-	db, _ := dbs.LoadOrCompute(countryCode, func() *lmdb.LMDBBackend {
-		db := &lmdb.LMDBBackend{
+func getDatabaseForCountry(countryCode string) *bolt.BoltBackend {
+	db, _ := dbs.LoadOrCompute(countryCode, func() *bolt.BoltBackend {
+		db := &bolt.BoltBackend{
 			MaxLimit: 500,
-			Path:     s.DatabasePath + "-" + countryCode,
+			Path:     s.DatabaseDir + "/" + countryCode,
 		}
 		if err := db.Init(); err != nil {
 			// log.Fatal().Err(err).Msg("failed to initialize database")
@@ -29,7 +30,7 @@ func getDatabaseForCountry(countryCode string) *lmdb.LMDBBackend {
 // Gets the country code in ISO 3166-1 alpha-2 format.
 // On error returns an empty string.
 func getCountryCode(r *http.Request) string {
-	ip := net.ParseIP(r.RemoteAddr)
+	ip := net.ParseIP(strings.Split(r.RemoteAddr, ":")[0])
 
 	var record struct {
 		Country struct {
@@ -38,7 +39,6 @@ func getCountryCode(r *http.Request) string {
 	}
 
 	if err := mm.Lookup(ip, &record); err != nil {
-		log.Print(err)
 		return ""
 	}
 

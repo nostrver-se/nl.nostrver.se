@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/boltdb/bolt"
 	"github.com/fiatjaf/khatru"
 	"github.com/fiatjaf/khatru/policies"
 	"github.com/kelseyhightower/envconfig"
@@ -23,15 +24,16 @@ var maxmindData []byte
 
 var mm *maxminddb.Reader
 var (
-	s     Settings
-	log   = zerolog.New(os.Stderr).Output(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
-	relay = khatru.NewRelay()
+	s        Settings
+	log      = zerolog.New(os.Stderr).Output(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
+	relay    = khatru.NewRelay()
+	globalDB *bolt.DB
 )
 
 type Settings struct {
 	Port         string `envconfig:"PORT" default:"40404"`
 	BaseDomain   string `envconfig:"BASE_DOMAIN" required:"true"`
-	DatabasePath string `envconfig:"DATABASE_PATH" default:"./db"`
+	DatabaseDir  string `envconfig:"DATABASE_DIR" default:"./db"`
 	RelayContact string `envconfig:"RELAY_CONTACT" required:"false"`
 	RelayIcon    string `envconfig:"RELAY_ICON" required:"false"`
 }
@@ -41,36 +43,55 @@ type Settings struct {
 const blockedCountries = ""
 
 func main() {
-	mm, _ = maxminddb.FromBytes(maxmindData)
-	if mm == nil {
-		log.Fatal().Msg("failed to open maxmind db")
-		return
-	}
-
+	// load environment variables
 	err := envconfig.Process("", &s)
 	if err != nil {
 		log.Fatal().Err(err).Msg("couldn't process envconfig")
 		return
 	}
 
-	// init relay, see https://github.com/nostr-protocol/nips/blob/master/11.md
+	// load ip data
+	mm, _ = maxminddb.FromBytes(maxmindData)
+	if mm == nil {
+		log.Fatal().Msg("failed to open maxmind db")
+		return
+	}
+
+	os.MkdirAll(s.DatabaseDir, 0755)
+
+	// open global boltdb
+	globalDB, err = bolt.Open(s.DatabaseDir+"/global", 0644, nil)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to open global db")
+		return
+	}
+	if err := globalDB.Update(func(txn *bolt.Tx) error {
+		_, err := txn.CreateBucketIfNotExists([]byte("idMap"))
+		return err
+	}); err != nil {
+		log.Fatal().Err(err).Msg("failed to open idMap bucket on global db")
+		return
+	}
+
 	relay.Info.Name = "countries"
-	relay.Info.Description = "serves notes according to your nationality"
+	relay.Info.Description = "serves notes according to your country"
 	relay.Info.Contact = s.RelayContact
 	relay.Info.Icon = s.RelayIcon
 	relay.Info.Limitation = &nip11.RelayLimitationDocument{}
 
-	relay.StoreEvent = append(relay.StoreEvent, storeEventForCountryDB)
-
+	relay.StoreEvent = append(relay.StoreEvent,
+		storeEventForCountryDB,
+		trackEventOnGlobalDB,
+	)
 	relay.QueryEvents = append(relay.QueryEvents, queryEventForCountryDB)
-
 	relay.DeleteEvent = append(relay.DeleteEvent, deleteEventForCountryDB)
-
 	relay.RejectEvent = append(relay.RejectEvent,
 		policies.PreventLargeTags(100),
 		policies.PreventTooManyIndexableTags(8, []int{3, 10002}, nil),
 		policies.PreventTooManyIndexableTags(1000, nil, []int{3, 10002}),
+		policies.RestrictToSpecifiedKinds(1),
 		rejectEventForCountryDB,
+		rejectIfAlreadyHaveInAnyOtherDB,
 	)
 
 	relay.RejectFilter = append(relay.RejectFilter,
