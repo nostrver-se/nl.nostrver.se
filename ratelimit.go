@@ -32,7 +32,7 @@ func rateLimit(ctx context.Context, event *nostr.Event) (reject bool, msg string
 	for _, key := range []string{hex.EncodeToString(ip), event.PubKey} {
 		bucket, loaded := buckets.LoadOrStore(key, &atomic.Int32{})
 		if !loaded {
-			bucket.Add(2)
+			bucket.Add(3)
 		}
 
 		if bucket.Load() <= 0 {
