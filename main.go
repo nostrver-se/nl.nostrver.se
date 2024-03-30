@@ -72,6 +72,9 @@ func main() {
 	// start cloudflare thing
 	go updateCloudflareRangesRoutine()
 
+	// ratelimiter
+	go bucketFillingRoutine()
+
 	relay.Info.Name = "countries"
 	relay.Info.Description = "serves notes according to your country"
 	relay.Info.Contact = s.RelayContact
@@ -90,6 +93,7 @@ func main() {
 		rejectCloudflareEvents,
 		policies.PreventLargeTags(12),
 		rejectIfAlreadyHaveInAnyOtherDB,
+		rateLimit,
 	)
 
 	relay.RejectFilter = append(relay.RejectFilter,
