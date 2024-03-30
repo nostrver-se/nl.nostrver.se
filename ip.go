@@ -106,10 +106,8 @@ func getDatabaseForCountry(countryCode string) *es_bolt.BoltBackend {
 	return db
 }
 
-// Gets the country code in ISO 3166-1 alpha-2 format.
-// On error returns an empty string.
 func getCountryCode(r *http.Request) string {
-	ip := net.ParseIP(strings.Split(r.RemoteAddr, ":")[0])
+	ip := getRemoteIPAndParse(r)
 
 	var record struct {
 		Country struct {
@@ -122,4 +120,47 @@ func getCountryCode(r *http.Request) string {
 	}
 
 	return record.Country.ISOCode
+}
+
+func getRemoteIPAndParse(r *http.Request) net.IP {
+	if xffh := r.Header.Get("X-Forwarded-For"); xffh != "" {
+		for _, v := range strings.Split(xffh, ",") {
+			if ip := net.ParseIP(strings.TrimSpace(v)); ip != nil && ip.IsGlobalUnicast() && !isPrivate(ip) {
+				return ip
+			}
+		}
+	}
+
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	return net.ParseIP(ip)
+}
+
+var privateMasks = parseCIDRs(
+	"127.0.0.0/8",
+	"10.0.0.0/8",
+	"172.16.0.0/12",
+	"192.168.0.0/16",
+	"fc00::/7",
+)
+
+func parseCIDRs(ips ...string) []net.IPNet {
+	masks := make([]net.IPNet, len(ips))
+	for i, cidr := range ips {
+		_, netw, err := net.ParseCIDR(cidr)
+		if err != nil {
+			log.Fatal().Str("ip", cidr).Msg("failed to convert cidr range to mask")
+			return nil
+		}
+		masks[i] = *netw
+	}
+	return masks
+}
+
+func isPrivate(ip net.IP) bool {
+	for _, mask := range privateMasks {
+		if mask.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }

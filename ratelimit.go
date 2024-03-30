@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"net"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -29,7 +27,7 @@ func bucketFillingRoutine() {
 
 func rateLimit(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
 	conn := khatru.GetConnection(ctx)
-	ip := net.ParseIP(strings.Split(conn.Request.RemoteAddr, ":")[0])
+	ip := getRemoteIPAndParse(conn.Request)
 
 	for _, key := range []string{hex.EncodeToString(ip), event.PubKey} {
 		bucket, loaded := buckets.LoadOrStore(key, &atomic.Int32{})

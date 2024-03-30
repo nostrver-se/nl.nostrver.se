@@ -11,7 +11,6 @@ require (
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/puzpuzpuz/xsync/v3 v3.0.2
 	github.com/rs/zerolog v1.32.0
-	github.com/sebest/xff v0.0.0-20210106013422-671bd2870b3a
 	golang.org/x/sync v0.6.0
 )
 
@@ -32,6 +31,7 @@ require (
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee // indirect
+	github.com/sebest/xff v0.0.0-20210106013422-671bd2870b3a // indirect
 	github.com/tidwall/gjson v1.17.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect

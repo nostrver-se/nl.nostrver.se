@@ -15,7 +15,6 @@ import (
 	"github.com/nbd-wtf/go-nostr/nip11"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/rs/zerolog"
-	"github.com/sebest/xff"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -105,8 +104,7 @@ func main() {
 
 	log.Info().Msg("running on http://0.0.0.0:" + s.Port)
 
-	xffmw, _ := xff.Default()
-	server := &http.Server{Addr: ":" + s.Port, Handler: xffmw.Handler(relay)}
+	server := &http.Server{Addr: ":" + s.Port, Handler: relay}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

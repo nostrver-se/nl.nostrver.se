@@ -48,8 +48,7 @@ func updateCloudflareRangesRoutine() {
 
 func rejectCloudflareEvents(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
 	conn := khatru.GetConnection(ctx)
-	r := conn.Request
-	ip := net.ParseIP(strings.Split(r.RemoteAddr, ":")[0])
+	ip := getRemoteIPAndParse(conn.Request)
 	for _, ipnet := range cloudflareRanges {
 		if ipnet.Contains(ip) {
 			return true, "blastr not allowed"
