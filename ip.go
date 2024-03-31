@@ -23,6 +23,8 @@ var (
 
 func storeEventForCountryDB(ctx context.Context, event *nostr.Event) error {
 	conn := khatru.GetConnection(ctx)
+
+	// this will always suceed as we check before on RejectEvents
 	country := getCountryCode(conn.Request)
 	db := getDatabaseForCountry(country)
 	return db.SaveEvent(ctx, event)
@@ -30,6 +32,8 @@ func storeEventForCountryDB(ctx context.Context, event *nostr.Event) error {
 
 func trackEventOnGlobalDB(ctx context.Context, event *nostr.Event) error {
 	conn := khatru.GetConnection(ctx)
+
+	// idem
 	country := getCountryCode(conn.Request)
 
 	return globalDB.Update(func(txn *bolt.Tx) error {
@@ -46,12 +50,12 @@ func trackEventOnGlobalDB(ctx context.Context, event *nostr.Event) error {
 func rejectEventForCountry(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
 	conn := khatru.GetConnection(ctx)
 	country := getCountryCode(conn.Request)
-	if country != "" && slices.Contains(s.BlockedCountries, country) == true {
-		return true, fmt.Sprintf("The country %s is blocked.", country)
-	}
-
 	if country == "" {
 		return true, "We can't determine your country."
+	}
+
+	if country != "" && slices.Contains(s.BlockedCountries, country) == true {
+		return true, fmt.Sprintf("The country %s is blocked.", country)
 	}
 
 	return false, ""
@@ -60,7 +64,7 @@ func rejectEventForCountry(ctx context.Context, event *nostr.Event) (reject bool
 func rejectIfAlreadyHaveInAnyOtherDB(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
 	globalDB.View(func(txn *bolt.Tx) error {
 		conn := khatru.GetConnection(ctx)
-		country := getCountryCode(conn.Request)
+		country := getCountryCode(conn.Request) // we have already checked this above
 
 		bucket := txn.Bucket(idMapBucket)
 		id, _ := hex.DecodeString(event.ID)
@@ -78,6 +82,12 @@ func rejectIfAlreadyHaveInAnyOtherDB(ctx context.Context, event *nostr.Event) (r
 func queryEventForCountryDB(ctx context.Context, filter nostr.Filter) (chan *nostr.Event, error) {
 	conn := khatru.GetConnection(ctx)
 	country := getCountryCode(conn.Request)
+	if country == "" {
+		ch := make(chan *nostr.Event)
+		close(ch)
+		return ch, nil
+	}
+
 	db := getDatabaseForCountry(country)
 
 	return db.QueryEvents(ctx, filter)
@@ -86,9 +96,24 @@ func queryEventForCountryDB(ctx context.Context, filter nostr.Filter) (chan *nos
 func deleteEventForCountryDB(ctx context.Context, event *nostr.Event) error {
 	conn := khatru.GetConnection(ctx)
 	country := getCountryCode(conn.Request)
-	db := getDatabaseForCountry(country)
+	if country == "" {
+		return nil
+	}
 
-	return db.DeleteEvent(ctx, event)
+	db := getDatabaseForCountry(country)
+	err := db.DeleteEvent(ctx, event)
+	if err == nil {
+		if err := globalDB.Update(func(txn *bolt.Tx) error {
+			bucket := txn.Bucket(idMapBucket)
+			id, _ := hex.DecodeString(event.ID)
+			return bucket.Delete(id[0:8])
+		}); err != nil {
+			log.Error().Err(err).Str("event", event.ID).
+				Msg("error deleting from global db")
+		}
+	}
+
+	return err
 }
 
 func getDatabaseForCountry(countryCode string) *lmdb.LMDBBackend {

@@ -17,8 +17,9 @@ func deleteOldStuffRoutine() {
 			continue
 		}
 
-		country := entries[rand.Intn(len(entries))].Name()
-		if country == "global" {
+		entry := entries[rand.Intn(len(entries))]
+		country := entry.Name()
+		if !entry.IsDir() && len(country) != 2 {
 			continue
 		}
 
